@@ -1,44 +1,52 @@
-// app/api/upload/route.ts
-export const runtime = "nodejs"; // ensure Node runtime (not edge), needed for FormData file streaming
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+function json(status: number, data: unknown) {
+  return new Response(JSON.stringify(data), {
+    status, headers: { "content-type": "application/json" },
+  });
+}
 
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
-    const file = form.get("file") as File | null;
-    const note = (form.get("note") as string | null) || "";
-    if (!file) {
-      return new Response(JSON.stringify({ error: "no file" }), { status: 400 });
-    }
+    const file = form.get("file");
+    if (!(file instanceof File)) return json(400, { error: "no file" });
 
     const BOT = process.env.TELEGRAM_BOT_TOKEN;
     const CHAT = process.env.TARGET_CHAT_ID;
-    if (!BOT || !CHAT) {
-      return new Response(JSON.stringify({ error: "missing env vars" }), { status: 500 });
-    }
+    if (!BOT || !CHAT) return json(500, { error: "missing env vars" });
 
-    const caption =
-      `📥 Audio received (${new Date().toISOString()})` + (note ? `\n📝 ${note}` : "");
+    const filename = (file as any).name || "audio.bin";
+    const mime = file.type || "";
+    const caption = `📥 Audio received (${new Date().toISOString()})`;
 
-    // Forward to Telegram as a document (broad format support)
-    const tgURL = `https://api.telegram.org/bot${BOT}/sendDocument`;
+    // Decide endpoint: OGG/Opus -> sendVoice (voice bubble), else sendDocument
+    const isOgg = mime.includes("audio/ogg") || filename.toLowerCase().endsWith(".ogg");
+    const endpoint = isOgg ? "sendVoice" : "sendDocument";
+    const fieldName = isOgg ? "voice" : "document";
+
     const tgForm = new FormData();
     tgForm.append("chat_id", CHAT);
     tgForm.append("caption", caption);
-    // Pass through the uploaded File object directly
-    tgForm.append("document", file, (file as any).name || "audio.webm");
+    tgForm.append(fieldName, file, filename);
 
-    const tgRes = await fetch(tgURL, { method: "POST", body: tgForm });
-    const tgJson = await tgRes.json().catch(() => ({}));
+    const tgURL = `https://api.telegram.org/bot${BOT}/${endpoint}`;
+    const controller = new AbortController();
+    const to = setTimeout(() => controller.abort(), 20000);
 
-    if (!tgRes.ok) {
-      return new Response(
-        JSON.stringify({ error: "telegram failed", details: tgJson }),
-        { status: 502 }
-      );
-    }
+    const tgRes = await fetch(tgURL, { method: "POST", body: tgForm, signal: controller.signal });
+    clearTimeout(to);
 
-    return Response.json({ status: "ok" });
+    const raw = await tgRes.text();
+    let parsed: any = {};
+    try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+    if (!tgRes.ok || parsed?.ok === false) return json(502, { error: "telegram_failed", details: parsed });
+
+    return json(200, { status: "ok", mode: isOgg ? "voice" : "document" });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message || String(e) }), { status: 400 });
+    return json(400, { error: e?.message || String(e) });
   }
 }
+

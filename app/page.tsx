@@ -116,7 +116,7 @@ export default function Home() {
   return (
     <main style={styles.main}>
       <div style={styles.header}>
-        <div style={styles.title}>Pulsa para grabar</div>
+        <div style={styles.title}>Manten pulsado para grabar</div>
         <div style={styles.timer}>{recording ? formatTime(durationMs) : readyToSend ? "Ready" : "00:00"}</div>
       </div>
 
@@ -133,9 +133,9 @@ export default function Home() {
         onMouseUp={onPressEnd}
         onMouseLeave={onPressEnd}
         role="button"
-        aria-label="Hold to record"
+        aria-label="Manten pulsado para grabar"
       >
-        {recording ? "Deja de pulsar para terminar" : "Hold to Record"}
+        {recording ? "Deja de pulsar para terminar" : "Manten pulsado para grabar"}
       </div>
 
       {/* Preview (optional) */}

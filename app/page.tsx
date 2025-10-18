@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 export default function Home() {
   const [recording, setRecording] = useState(false);
   const [readyToSend, setReadyToSend] = useState(false);
-  const [status, setStatus] = useState("Hold to record");
+  const [status, setStatus] = useState("Mantén pulsado para grabar");
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [durationMs, setDurationMs] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -116,7 +116,7 @@ export default function Home() {
   return (
     <main style={styles.main}>
       <div style={styles.header}>
-        <div style={styles.title}>Hold to record</div>
+        <div style={styles.title}>Pulsa para grabar</div>
         <div style={styles.timer}>{recording ? formatTime(durationMs) : readyToSend ? "Ready" : "00:00"}</div>
       </div>
 
@@ -135,7 +135,7 @@ export default function Home() {
         role="button"
         aria-label="Hold to record"
       >
-        {recording ? "Release to stop" : "Hold to Record"}
+        {recording ? "Deja de pulsar para terminar" : "Hold to Record"}
       </div>
 
       {/* Preview (optional) */}
@@ -152,7 +152,7 @@ export default function Home() {
         onClick={sendRecording}
         disabled={!readyToSend || uploading}
       >
-        {uploading ? "Uploading…" : "SEND"}
+        {uploading ? "Cargando…" : "ENVIAR"}
       </button>
     </main>
   );

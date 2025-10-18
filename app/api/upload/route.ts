@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     // Mention bot in caption if username is available
     const mention = BOT_USERNAME ? `@${BOT_USERNAME}` : "";
-    const caption = `📥 Audio received ${mention}\n${new Date().toISOString()}`;
+    const caption = `📥 Mensaje recibido ${mention}\n${new Date().toISOString()}`;
 
     const tgForm = new FormData();
     tgForm.append("chat_id", CHAT);

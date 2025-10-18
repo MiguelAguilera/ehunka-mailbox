@@ -20,18 +20,20 @@ export default function Home() {
 
   async function startRec() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Prefer OGG/Opus (Telegram voice bubble compatible)
+    const ogg = "audio/ogg;codecs=opus";
+    const mimeType = (window as any).MediaRecorder?.isTypeSupported?.(ogg)
+      ? ogg
+      : "audio/webm"; // fallback for iOS/Safari
+
+    const rec = new MediaRecorder(stream, { mimeType });
     chunksRef.current = [];
-    const rec = new MediaRecorder(stream, { mimeType: "audio/webm" });
-    rec.ondataavailable = (e) => {
-      if (e.data.size) chunksRef.current.push(e.data);
-    };
+    rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
     rec.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+      const blob = new Blob(chunksRef.current, { type: mimeType });
       const url = URL.createObjectURL(blob);
-      setBlobUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
+      setBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
       setReadyToSend(true);
       setStatus("Recorded. Ready to send.");
     };
@@ -39,8 +41,8 @@ export default function Home() {
     recRef.current = rec;
     setRecording(true);
     setStatus("Recording…");
-  }
-
+ }
+ 
   function stopRec() {
     recRef.current?.stop();
     setRecording(false);
@@ -63,7 +65,10 @@ export default function Home() {
     if (!blobUrl) return;
     const resp = await fetch(blobUrl);
     const blob = await resp.blob();
-    await postBlob(blob, "voice.webm");
+
+    // If we recorded OGG/Opus, name it .ogg so server knows to use sendVoice
+    const isOgg = blob.type.includes("audio/ogg");
+    await postBlob(blob, isOgg ? "voice.ogg" : "voice.webm");
   }
 
   async function sendSelectedFile() {
